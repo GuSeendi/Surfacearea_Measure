@@ -1,0 +1,16 @@
+{
+  "name": "QCAD Professional Trial",
+  "version": "3.33.1",
+  "platform": "macOS Apple Silicon",
+  "artifact": "qcad-3.33.1-trial-macos-13-26-qt6-arm64.dmg",
+  "source": "https://qcad.org/archives/qcad/qcad-3.33.1-trial-macos-13-26-qt6-arm64.dmg",
+  "sha256": "e5640499d3d790b34fccc1180b39b3e213bd13255555003701eb316b4ac94a45",
+  "scope": "Publicly distributed official trial; static package inspection only",
+  "artifact_storage": "Temporary local storage outside the repository",
+  "public_source": {
+    "repository": "https://github.com/qcad/qcad.git",
+    "commit": "f0b35cb4ff79613693bdc0c0bcbf723f445f71ac",
+    "license": "GPL-3.0 with optional exceptions",
+    "role": "Reference evidence only; do not copy GPL implementation into the app"
+  }
+}

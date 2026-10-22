@@ -1,0 +1,14 @@
+{
+  "name": "SketchUp",
+  "version": "26.2.242",
+  "display_version": "26.2",
+  "platform": "macOS universal",
+  "artifact": "SketchUp-2026-2-242-76.dmg",
+  "source": "https://download.sketchup.com/SketchUp-2026-2-242-76.dmg",
+  "artifact_sha256": "3a89d6ea7a5eddbd97521bde884f528f2dd6348b6408b74651551fb89d27c344",
+  "artifact_size_bytes": 1493353715,
+  "main_executable_sha256": "b0a17de5830826e217dee276305d4af4208dbe2965a730dea23af4f66f40c3ad",
+  "bundle_identifier": "com.sketchup.SketchUp.2026",
+  "scope": "Official public macOS distribution; read-only identity inspection",
+  "artifact_storage": "Temporary local storage outside the repository"
+}

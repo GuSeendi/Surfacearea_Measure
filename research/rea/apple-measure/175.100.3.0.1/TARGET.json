@@ -1,0 +1,11 @@
+{
+  "name": "Apple Measure",
+  "version": "175.100.3.0.1",
+  "bundle_version": "175.100.3.0.1",
+  "bundle_identifier": "com.apple.measure",
+  "platform": "iOS",
+  "device": "iPhone 16 Pro",
+  "device_identifier": "ACC9BADE-22CF-52C2-94AC-7F116A5E6458",
+  "scope": "User-authorized bounded runtime launch; no static artifact extraction",
+  "artifact_sha256": null
+}

@@ -1,0 +1,13 @@
+{
+  "name": "Shapr3D",
+  "version": "26.180.0",
+  "build": "11926",
+  "platform": "macOS universal",
+  "artifact": "Shapr3D-26.180.0.11926.dmg",
+  "source": "https://download.shapr3d.com/mac/Shapr3D-26.180.0.11926.dmg",
+  "artifact_sha256": "41045229ef8a00e939e3b7ab9032c398a16723b667cb7a25ce61a191e9bdc8f0",
+  "main_executable_sha256": "fc5bf63604064b764c3c4694375239841b6e87d899f3e0f323edf891d6511174",
+  "bundle_identifier": "com.shapr3d.shapr",
+  "scope": "Official public macOS distribution; static package and metadata inspection",
+  "artifact_storage": "Temporary local storage outside the repository"
+}

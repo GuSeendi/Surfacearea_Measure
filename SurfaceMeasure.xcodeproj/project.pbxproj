@@ -1,0 +1,323 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 56;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		A10000000000000000000001 /* SurfaceMeasureApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000001 /* SurfaceMeasureApp.swift */; };
+		A10000000000000000000002 /* MeasurementFlowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000002 /* MeasurementFlowView.swift */; };
+		A10000000000000000000003 /* ScanView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000003 /* ScanView.swift */; };
+		A10000000000000000000004 /* ARCameraView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000004 /* ARCameraView.swift */; };
+		A10000000000000000000005 /* CaptureQuality.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000005 /* CaptureQuality.swift */; };
+		A10000000000000000000006 /* CaptureQualityEvaluator.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000006 /* CaptureQualityEvaluator.swift */; };
+		A10000000000000000000007 /* ARSessionController.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000007 /* ARSessionController.swift */; };
+		A10000000000000000000008 /* PlanarGeometry.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000009 /* PlanarGeometry.swift */; };
+		A10000000000000000000009 /* ProfileFitter.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000010 /* ProfileFitter.swift */; };
+		A10000000000000000000010 /* ShadowAreaCalculator.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000011 /* ShadowAreaCalculator.swift */; };
+		A10000000000000000000011 /* MeasurementState.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000012 /* MeasurementState.swift */; };
+		A10000000000000000000012 /* ProfileValidator.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000013 /* ProfileValidator.swift */; };
+		A10000000000000000000013 /* MeasurementReport.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000014 /* MeasurementReport.swift */; };
+		A10000000000000000000014 /* BoundaryOverlayRenderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000015 /* BoundaryOverlayRenderer.swift */; };
+		A10000000000000000000015 /* DepthSampler.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000016 /* DepthSampler.swift */; };
+		A10000000000000000000016 /* ResultView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000017 /* ResultView.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		A20000000000000000000001 /* SurfaceMeasureApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SurfaceMeasureApp.swift; sourceTree = "<group>"; };
+		A20000000000000000000002 /* MeasurementFlowView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeasurementFlowView.swift; sourceTree = "<group>"; };
+		A20000000000000000000003 /* ScanView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScanView.swift; sourceTree = "<group>"; };
+		A20000000000000000000004 /* ARCameraView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ARCameraView.swift; sourceTree = "<group>"; };
+		A20000000000000000000005 /* CaptureQuality.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaptureQuality.swift; sourceTree = "<group>"; };
+		A20000000000000000000006 /* CaptureQualityEvaluator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaptureQualityEvaluator.swift; sourceTree = "<group>"; };
+		A20000000000000000000007 /* ARSessionController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ARSessionController.swift; sourceTree = "<group>"; };
+		A20000000000000000000008 /* SurfaceMeasure.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = SurfaceMeasure.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		A20000000000000000000009 /* PlanarGeometry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlanarGeometry.swift; sourceTree = "<group>"; };
+		A20000000000000000000010 /* ProfileFitter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileFitter.swift; sourceTree = "<group>"; };
+		A20000000000000000000011 /* ShadowAreaCalculator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShadowAreaCalculator.swift; sourceTree = "<group>"; };
+		A20000000000000000000012 /* MeasurementState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeasurementState.swift; sourceTree = "<group>"; };
+		A20000000000000000000013 /* ProfileValidator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileValidator.swift; sourceTree = "<group>"; };
+		A20000000000000000000014 /* MeasurementReport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeasurementReport.swift; sourceTree = "<group>"; };
+		A20000000000000000000015 /* BoundaryOverlayRenderer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BoundaryOverlayRenderer.swift; sourceTree = "<group>"; };
+		A20000000000000000000016 /* DepthSampler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DepthSampler.swift; sourceTree = "<group>"; };
+		A20000000000000000000017 /* ResultView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ResultView.swift; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		A30000000000000000000001 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		A40000000000000000000001 = {
+			isa = PBXGroup;
+			children = (
+				A40000000000000000000002 /* SurfaceMeasure */,
+				A40000000000000000000006 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		A40000000000000000000002 /* SurfaceMeasure */ = {
+			isa = PBXGroup;
+			children = (
+				A40000000000000000000003 /* App */,
+				A40000000000000000000004 /* Models */,
+				A40000000000000000000005 /* Services */,
+				A40000000000000000000007 /* Views */,
+			);
+			path = SurfaceMeasure;
+			sourceTree = "<group>";
+		};
+		A40000000000000000000003 /* App */ = {
+			isa = PBXGroup;
+			children = (
+				A20000000000000000000001 /* SurfaceMeasureApp.swift */,
+			);
+			path = App;
+			sourceTree = "<group>";
+		};
+		A40000000000000000000004 /* Models */ = {
+			isa = PBXGroup;
+			children = (
+				A20000000000000000000005 /* CaptureQuality.swift */,
+				A20000000000000000000009 /* PlanarGeometry.swift */,
+				A20000000000000000000012 /* MeasurementState.swift */,
+			);
+			path = Models;
+			sourceTree = "<group>";
+		};
+		A40000000000000000000005 /* Services */ = {
+			isa = PBXGroup;
+			children = (
+				A20000000000000000000006 /* CaptureQualityEvaluator.swift */,
+				A20000000000000000000007 /* ARSessionController.swift */,
+				A20000000000000000000010 /* ProfileFitter.swift */,
+				A20000000000000000000011 /* ShadowAreaCalculator.swift */,
+				A20000000000000000000013 /* ProfileValidator.swift */,
+				A20000000000000000000014 /* MeasurementReport.swift */,
+				A20000000000000000000015 /* BoundaryOverlayRenderer.swift */,
+				A20000000000000000000016 /* DepthSampler.swift */,
+			);
+			path = Services;
+			sourceTree = "<group>";
+		};
+		A40000000000000000000006 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				A20000000000000000000008 /* SurfaceMeasure.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		A40000000000000000000007 /* Views */ = {
+			isa = PBXGroup;
+			children = (
+				A20000000000000000000002 /* MeasurementFlowView.swift */,
+				A20000000000000000000003 /* ScanView.swift */,
+				A20000000000000000000004 /* ARCameraView.swift */,
+				A20000000000000000000017 /* ResultView.swift */,
+			);
+			path = Views;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		A50000000000000000000001 /* SurfaceMeasure */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = A60000000000000000000002 /* Build configuration list for PBXNativeTarget "SurfaceMeasure" */;
+			buildPhases = (
+				A30000000000000000000002 /* Sources */,
+				A30000000000000000000001 /* Frameworks */,
+				A30000000000000000000003 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = SurfaceMeasure;
+			productName = SurfaceMeasure;
+			productReference = A20000000000000000000008 /* SurfaceMeasure.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		A70000000000000000000001 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 2660;
+				LastUpgradeCheck = 2660;
+				TargetAttributes = {
+					A50000000000000000000001 = {
+						CreatedOnToolsVersion = 26.0;
+					};
+				};
+			};
+			buildConfigurationList = A60000000000000000000001 /* Build configuration list for PBXProject "SurfaceMeasure" */;
+			compatibilityVersion = "Xcode 14.0";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = A40000000000000000000001;
+			productRefGroup = A40000000000000000000006 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				A50000000000000000000001 /* SurfaceMeasure */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		A30000000000000000000003 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		A30000000000000000000002 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A10000000000000000000001 /* SurfaceMeasureApp.swift in Sources */,
+				A10000000000000000000002 /* MeasurementFlowView.swift in Sources */,
+				A10000000000000000000003 /* ScanView.swift in Sources */,
+				A10000000000000000000004 /* ARCameraView.swift in Sources */,
+				A10000000000000000000005 /* CaptureQuality.swift in Sources */,
+				A10000000000000000000006 /* CaptureQualityEvaluator.swift in Sources */,
+				A10000000000000000000007 /* ARSessionController.swift in Sources */,
+				A10000000000000000000008 /* PlanarGeometry.swift in Sources */,
+				A10000000000000000000009 /* ProfileFitter.swift in Sources */,
+				A10000000000000000000010 /* ShadowAreaCalculator.swift in Sources */,
+				A10000000000000000000011 /* MeasurementState.swift in Sources */,
+				A10000000000000000000012 /* ProfileValidator.swift in Sources */,
+				A10000000000000000000013 /* MeasurementReport.swift in Sources */,
+				A10000000000000000000014 /* BoundaryOverlayRenderer.swift in Sources */,
+				A10000000000000000000015 /* DepthSampler.swift in Sources */,
+				A10000000000000000000016 /* ResultView.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		A80000000000000000000001 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				ONLY_ACTIVE_ARCH = YES;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+			};
+			name = Debug;
+		};
+		A80000000000000000000002 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+			};
+			name = Release;
+		};
+		A80000000000000000000003 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 11;
+				DEVELOPMENT_TEAM = 594Y7WGBCH;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = SurfaceMeasure/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 0.2.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.seenpeep.surfacemeasure.l4snj5kt4n;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Debug;
+		};
+		A80000000000000000000004 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 11;
+				DEVELOPMENT_TEAM = 594Y7WGBCH;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = SurfaceMeasure/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 0.2.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.seenpeep.surfacemeasure.l4snj5kt4n;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = 1;
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		A60000000000000000000001 /* Build configuration list for PBXProject "SurfaceMeasure" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				A80000000000000000000001 /* Debug */,
+				A80000000000000000000002 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		A60000000000000000000002 /* Build configuration list for PBXNativeTarget "SurfaceMeasure" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				A80000000000000000000003 /* Debug */,
+				A80000000000000000000004 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = A70000000000000000000001 /* Project object */;
+}

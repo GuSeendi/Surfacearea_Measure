@@ -1,0 +1,11 @@
+{
+  "name": "Twindo",
+  "version": "1.0.90",
+  "bundle_version": "258",
+  "bundle_identifier": "com.twindo.mobile",
+  "platform": "iOS",
+  "device": "iPhone 16 Pro",
+  "device_identifier": "ACC9BADE-22CF-52C2-94AC-7F116A5E6458",
+  "scope": "User-authorized bounded launch request; no static artifact extraction",
+  "artifact_sha256": null
+}
