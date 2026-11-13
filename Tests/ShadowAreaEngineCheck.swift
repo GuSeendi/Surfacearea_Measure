@@ -22,10 +22,26 @@ enum ShadowAreaEngineCheck {
         try robustArcFitRejectsOutlier()
         print("check: straight trace with spike")
         try straightTraceWithOutlierStaysLine()
+        print("check: irregular freeform curve")
+        try irregularCurvePreservesProjectedAreaAndLength()
+        print("check: automatic irregular curve")
+        try automaticFitRetainsIrregularCurve()
+        print("check: hand tremor does not inflate length")
+        try handTremorDoesNotInflateLength()
+        print("check: unstable trace rejection")
+        try unstableTraceIsRejected()
+        print("check: freeform gap rejection")
+        try freeformGapIsRejected()
+        print("check: freeform crossing rejection")
+        try freeformSelfIntersectionIsRejected()
         print("check: temporal endpoint filter")
         temporalEndpointFilterRejectsDepthSpike()
         print("check: moving endpoint rejection")
         temporalEndpointFilterRejectsMotion()
+        print("check: direct 3D straight length")
+        straightLengthUsesSpatialDistance()
+        print("check: final cubic-meter volume")
+        finalVolumeUsesAreaTimesStraightLength()
         print("ShadowAreaEngineCheck: all checks passed")
     }
 
@@ -180,6 +196,140 @@ enum ShadowAreaEngineCheck {
         }
     }
 
+    private static func irregularCurvePreservesProjectedAreaAndLength() throws {
+        func boundary(_ x: Double) -> PlanarPoint {
+            PlanarPoint(
+                x: x,
+                y: 0.2 * sin(.pi * x) + 0.07 * sin(3 * .pi * x)
+            )
+        }
+        let observations = (0...100).map { index in
+            let x = Double(index) / 100
+            var point = boundary(x)
+            if index != 0 && index != 100 {
+                point.y += sin(Double(index) * 2.7) * 0.0015
+            }
+            if index == 48 { point.y += 0.06 }
+            return PlanarObservation(
+                point: point,
+                uncertainty: 0.0035,
+                timestamp: Double(index) / 30
+            )
+        }
+        let fit = try ProfileFitter.fit(observations: observations, mode: .arc)
+        guard case let .freeform(points) = fit.geometry, points.count >= 4 else {
+            fatalError("irregular curve was reduced to a circular arc or line")
+        }
+        assertNear(fit.geometry.start.distance(to: boundary(0)), 0, tolerance: 1e-12, "curve start")
+        assertNear(fit.geometry.end.distance(to: boundary(1)), 0, tolerance: 1e-12, "curve end")
+
+        let reference = (0...10_000).map { boundary(Double($0) / 10_000) }
+        let referenceLength = zip(reference, reference.dropFirst()).reduce(0.0) {
+            $0 + $1.0.distance(to: $1.1)
+        }
+        assertNear(fit.geometry.length, referenceLength, tolerance: 0.025, "freeform length")
+
+        let closing = segment(.line(start: boundary(1), end: boundary(0)))
+        let result = try ShadowAreaCalculator.calculate(segments: [
+            segment(fit.geometry), closing
+        ])
+        let referenceArea = 0.4 / .pi + 0.14 / (3 * .pi)
+        assertNear(result.areaSquareMeters, referenceArea, tolerance: 0.005, "freeform area")
+    }
+
+    private static func freeformGapIsRejected() throws {
+        let observations = (0...10).map { index in
+            let x = index < 5 ? Double(index) * 0.01 : Double(index) * 0.01 + 0.1
+            return PlanarObservation(
+                point: PlanarPoint(x: x, y: 0.1 * sin(x * .pi)),
+                uncertainty: 0.0035,
+                timestamp: Double(index) / 30
+            )
+        }
+        do {
+            _ = try ProfileFitter.fit(observations: observations, mode: .arc)
+            fatalError("skipped boundary was silently bridged")
+        } catch ProfileFitError.discontinuousTrace {
+            return
+        }
+    }
+
+    private static func automaticFitRetainsIrregularCurve() throws {
+        let observations = (0...100).map { index in
+            let x = Double(index) / 100
+            return PlanarObservation(
+                point: PlanarPoint(
+                    x: x,
+                    y: 0.2 * sin(.pi * x) + 0.07 * sin(3 * .pi * x)
+                ),
+                uncertainty: 0.0035,
+                timestamp: Double(index) / 30
+            )
+        }
+        let fit = try ProfileFitter.fit(observations: observations, mode: .automatic)
+        guard case .freeform = fit.geometry else {
+            fatalError("automatic mode forced an irregular curve into one circle")
+        }
+    }
+
+    private static func handTremorDoesNotInflateLength() throws {
+        let observations = (0...100).map { index in
+            let x = Double(index) / 100
+            let y = index == 0 || index == 100
+                ? 0 : 0.003 * sin(Double(index) * 1.3)
+            return PlanarObservation(
+                point: PlanarPoint(x: x, y: y),
+                uncertainty: 0.0035,
+                timestamp: Double(index) / 30
+            )
+        }
+        let fit = try ProfileFitter.fit(observations: observations, mode: .arc)
+        guard fit.geometry.length < 1.01 else {
+            fatalError("hand tremor inflated curve length: \(fit.geometry.length)")
+        }
+    }
+
+    private static func unstableTraceIsRejected() throws {
+        let observations = (0...100).map { index in
+            let x = Double(index) / 100
+            let y = index == 0 || index == 100
+                ? 0 : 0.015 * sin(Double(index) * 0.65)
+            return PlanarObservation(
+                point: PlanarPoint(x: x, y: y),
+                uncertainty: 0.0035,
+                timestamp: Double(index) / 30
+            )
+        }
+        do {
+            _ = try ProfileFitter.fit(observations: observations, mode: .arc)
+            fatalError("unstable hand motion was accepted as precise curve")
+        } catch ProfileFitError.unstableTrace {
+            return
+        }
+    }
+
+    private static func freeformSelfIntersectionIsRejected() throws {
+        let crossed = segment(.freeform(points: [
+            PlanarPoint(x: 0, y: 0),
+            PlanarPoint(x: 1, y: 1),
+            PlanarPoint(x: 0, y: 1),
+            PlanarPoint(x: 1, y: 0)
+        ]))
+        let closing = segment(.line(
+            start: PlanarPoint(x: 1, y: 0),
+            end: PlanarPoint(x: 0, y: 0)
+        ))
+        guard ProfileValidator.hasSelfIntersection([crossed], close: false) else {
+            fatalError("self-crossing curve was not detected before committing the side")
+        }
+        do {
+            _ = try ShadowAreaCalculator.calculate(segments: [crossed, closing])
+            fatalError("self-crossing freeform boundary was accepted")
+        } catch ShadowAreaError.selfIntersection {
+            return
+        }
+    }
+
     private static func temporalEndpointFilterRejectsDepthSpike() {
         let plane = MeasurementPlane(
             origin: SIMD3<Float>(repeating: 0),
@@ -227,6 +377,81 @@ enum ShadowAreaEngineCheck {
         guard let reference else { fatalError("missing moving reference") }
         if filter.stableEstimate(near: reference, plane: nil) != nil {
             fatalError("moving endpoint was accepted")
+        }
+    }
+
+    private static func straightLengthUsesSpatialDistance() {
+        let start = SIMD3<Float>(0, 0, 0)
+        let end = SIMD3<Float>(3, 4, 12)
+        let measurement = StraightLengthMeasurement(
+            startWorldPoint: start,
+            endWorldPoint: end
+        )
+        assertNear(measurement.lengthMeters, 13, tolerance: 1e-10, "3D line length")
+
+        let plane = MeasurementPlane(
+            origin: .zero,
+            normal: SIMD3<Float>(0, 0, 1),
+            axisU: SIMD3<Float>(1, 0, 0),
+            axisV: SIMD3<Float>(0, 1, 0)
+        )
+        let projectedLength = plane.project(start).point.distance(
+            to: plane.project(end).point
+        )
+        assertNear(projectedLength, 5, tolerance: 1e-10, "2D projection contrast")
+        guard measurement.lengthMeters > projectedLength else {
+            fatalError("straight length was incorrectly projected onto the area plane")
+        }
+
+        let areaResult = ShadowMeasurementResult(
+            areaSquareMeters: 1,
+            perimeterMeters: 4,
+            uncertainty95SquareMeters: 0.01,
+            segmentCount: 4,
+            maximumFitRMS: 0
+        )
+        let report = MeasurementReport.plainText(
+            result: areaResult,
+            segments: [],
+            lengthMeasurement: measurement
+        )
+        guard report.contains("ความยาวเส้นตรงจริง 3D:") else {
+            fatalError("combined report omitted the direct 3D length")
+        }
+    }
+
+    private static func finalVolumeUsesAreaTimesStraightLength() {
+        let areaResult = ShadowMeasurementResult(
+            areaSquareMeters: 0.6,
+            perimeterMeters: 123,
+            uncertainty95SquareMeters: 0.01,
+            segmentCount: 4,
+            maximumFitRMS: 0
+        )
+        let line = StraightLengthMeasurement(
+            startWorldPoint: .zero,
+            endWorldPoint: SIMD3<Float>(0, 0, 2.5)
+        )
+        let cubicMeters = MeasurementReport.cubicMeters(
+            areaSquareMeters: areaResult.areaSquareMeters,
+            straightLengthMeters: line.lengthMeters
+        )
+        assertNear(cubicMeters, 1.5, tolerance: 1e-12, "area × direct length")
+        guard MeasurementReport.volume(cubicMeters) == "1.5 m³" else {
+            fatalError("volume is not formatted in cubic meters")
+        }
+
+        let areaOnly = MeasurementReport.plainText(result: areaResult, segments: [])
+        guard !areaOnly.contains("ปริมาตร") else {
+            fatalError("volume appeared before the straight length was measured")
+        }
+        let completed = MeasurementReport.plainText(
+            result: areaResult,
+            segments: [],
+            lengthMeasurement: line
+        )
+        guard completed.contains("ปริมาตรโดยประมาณ"), completed.contains("1.5 m³") else {
+            fatalError("final report omitted the measured volume")
         }
     }
 

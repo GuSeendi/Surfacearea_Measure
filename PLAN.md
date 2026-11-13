@@ -3,7 +3,8 @@
 ## Product boundary
 
 - Measure one closed projected silhouette on one locked 2D plane.
-- Support connected straight lines and circular arcs.
+- After area measurement, measure one independent straight-line distance between two LiDAR 3D endpoints.
+- Support connected straight lines, circular arcs and denoised freeform curves.
 - Preserve depth only long enough to recover a 3D boundary point; orthogonally project that point to the locked plane before geometry and area calculation.
 - Do not reconstruct or sum 3D surface triangles.
 - Never silently close a large gap or accept crossing/overlapping boundaries.
@@ -16,14 +17,15 @@
 - Continuous tracking, distance, speed, angle and thermal quality gates.
 - Stable local plane coordinates that remain fixed while the user walks.
 - One guided tracing screen with center reticle and haptic feedback.
-- Automatic, forced-line and forced-arc modes.
-- Bounded observation storage and real-time line/arc preview.
+- Automatic, forced-line and freeform-curve modes.
+- Bounded observation storage and real-time line/curve preview.
 - Undo, reset, metric closure tolerance and closed-profile fill.
 - Self-intersection and collinear-overlap rejection.
-- Exact line/arc Green's-theorem area and analytic perimeter.
+- Exact line/arc Green's-theorem area, plus polygonal Green area and measured length for denoised freeform curves.
 - Estimated uncertainty, per-side lengths and shareable text result.
 - Deterministic checks for rectangle, orientation, circle, crossing, overlap and fit classification.
 - Robust multi-frame endpoint stabilization that rejects isolated depth spikes and moving reticles.
+- Freeform curve capture with preserved endpoints, isolated-spike smoothing, trace-gap rejection and self-intersection checks.
 
 ## Precision phase
 
@@ -37,7 +39,7 @@
 ## Geometry phase
 
 1. Add editable endpoints and arc handles after closure.
-2. Add cubic Bézier/B-spline only after an exact/adaptive Green integral and stable fitting tests exist.
+2. Consider cubic Bézier/B-spline only if physical tests show that the current denoised polyline needs smoother interpolation; require an exact/adaptive Green integral and stable fitting tests first.
 3. Support holes as explicit nested loops; do not infer them automatically.
 4. Add JSON audit export containing the plane, raw observations, fitted entities, residuals and quality metadata.
 5. Add SVG/DXF export from local plane coordinates.

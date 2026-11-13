@@ -25,6 +25,7 @@ final class ARSessionController: NSObject, ObservableObject {
     @Published private(set) var plane: MeasurementPlane?
     @Published private(set) var segments: [ProfileSegment] = []
     @Published private(set) var result: ShadowMeasurementResult?
+    @Published private(set) var lengthMeasurement: StraightLengthMeasurement?
     @Published private(set) var statusText = "กำลังเตรียมกล้อง…"
     @Published private(set) var lastActionText: String?
     @Published var traceMode: TraceMode = .automatic {
@@ -45,6 +46,7 @@ final class ARSessionController: NSObject, ObservableObject {
     private var strokeWorldPoints: [SIMD3<Float>] = []
     private var committedWorldPaths: [[SIMD3<Float>]] = []
     private var pointAnchors: [ARAnchor] = []
+    private var lengthAnchors: [ARAnchor] = []
     private var anchorWorldPositions: [UUID: SIMD3<Float>] = [:]
     private var pointTrackedRaycasts: [UUID: ARTrackedRaycast] = [:]
     private var pointRefinements: [UUID: PointRefinement] = [:]
@@ -68,9 +70,26 @@ final class ARSessionController: NSObject, ObservableObject {
     }
 
     var hasStartPoint: Bool { firstPoint != nil }
+    var hasLengthStartPoint: Bool { !lengthAnchors.isEmpty }
+    var canPlaceLengthPoint: Bool {
+        phase == .measuringLength && quality.isAcceptable && currentCursor != nil
+    }
+    var needsMoreCurveSamples: Bool {
+        traceMode == .arc && firstPoint != nil && strokeObservations.count < 4
+    }
+    var curveTraceIsUnstable: Bool {
+        traceMode == .arc
+            && firstPoint != nil
+            && strokeObservations.count >= 4
+            && previewGeometry == nil
+    }
     var canUndo: Bool { firstPoint != nil || !segments.isEmpty }
     var canPlacePoint: Bool {
-        phase == .tracing && quality.isAcceptable && currentCursor?.planarPoint != nil
+        phase == .tracing
+            && quality.isAcceptable
+            && currentCursor?.planarPoint != nil
+            && (firstPoint == nil || traceMode != .arc
+                || (strokeObservations.count >= 4 && previewGeometry != nil))
     }
     var closureDistance: Double? {
         guard let firstPoint, let cursor = currentCursor?.planarPoint else { return nil }
@@ -99,7 +118,10 @@ final class ARSessionController: NSObject, ObservableObject {
         return screenAligned && safePlanarDistance
     }
     var canClose: Bool {
-        quality.isAcceptable && isNearStart
+        quality.isAcceptable
+            && isNearStart
+            && (traceMode != .arc
+                || (strokeObservations.count >= 4 && previewGeometry != nil))
     }
 
     func attach(to arView: ARView) {
@@ -159,8 +181,17 @@ final class ARSessionController: NSObject, ObservableObject {
             : []
         session.run(configuration, options: options)
         if result != nil {
-            phase = .result
-            statusText = "พื้นที่เงาพร้อมตรวจสอบ"
+            switch phase {
+            case .measuringLength:
+                statusText = lengthAnchors.isEmpty
+                    ? "ขั้นที่ 2: เล็งจุดต้นของเส้นตรง"
+                    : "เล็งจุดปลายของเส้นตรง"
+            case .completed:
+                statusText = "วัดพื้นที่และความยาวครบแล้ว"
+            default:
+                phase = .result
+                statusText = "พื้นที่เงาพร้อมตรวจสอบ"
+            }
         } else if plane != nil {
             phase = .tracing
             statusText = firstPoint == nil
@@ -174,6 +205,81 @@ final class ARSessionController: NSObject, ObservableObject {
 
     func pause() {
         session.pause()
+    }
+
+    func startLengthMeasurement() {
+        guard result != nil, phase == .result else { return }
+        clearLengthMeasurement()
+        endpointFilter.reset()
+        phase = .measuringLength
+        statusText = "ขั้นที่ 2: เล็งจุดต้นของเส้นตรง"
+        lastActionText = nil
+        renderOverlay()
+    }
+
+    func retryLengthMeasurement() {
+        guard result != nil,
+              phase == .measuringLength || phase == .completed
+        else { return }
+        clearLengthMeasurement()
+        endpointFilter.reset()
+        phase = .measuringLength
+        statusText = "เล็งจุดต้นของเส้นตรงอีกครั้ง"
+        lastActionText = nil
+        renderOverlay()
+    }
+
+    func cancelLengthMeasurement() {
+        guard phase == .measuringLength else { return }
+        clearLengthMeasurement()
+        endpointFilter.reset()
+        phase = .result
+        statusText = "พื้นที่เงาพร้อมตรวจสอบ"
+        lastActionText = nil
+        renderOverlay()
+    }
+
+    func placeLengthPoint() {
+        guard canPlaceLengthPoint, let sampledCursor = currentCursor else {
+            feedback.notificationOccurred(.warning)
+            return
+        }
+        guard let stableCursor = endpointFilter.stableEstimate(
+            near: sampledCursor,
+            plane: nil
+        ) else {
+            feedback.notificationOccurred(.warning)
+            lastActionText = "ถือกล้องนิ่งสักครู่ให้ LiDAR ยืนยันจุด"
+            return
+        }
+        let worldPoint = placementCursor(from: stableCursor).rawWorldPoint
+        if lengthAnchors.isEmpty {
+            addLengthAnchor(at: worldPoint)
+            endpointFilter.reset()
+            endpointFilter.append(stableCursor)
+            statusText = "เล็งจุดปลายของเส้นตรง"
+            lastActionText = "บันทึกจุดต้นแล้ว"
+            impact.impactOccurred()
+            renderOverlay()
+            return
+        }
+
+        let start = anchorWorldPosition(for: lengthAnchors[0])
+        guard simd_distance(start, worldPoint) >= 0.01 else {
+            feedback.notificationOccurred(.warning)
+            lastActionText = "จุดปลายใกล้จุดต้นเกินไป"
+            return
+        }
+        addLengthAnchor(at: worldPoint)
+        lengthMeasurement = StraightLengthMeasurement(
+            startWorldPoint: start,
+            endWorldPoint: worldPoint
+        )
+        phase = .completed
+        statusText = "วัดพื้นที่และความยาวครบแล้ว"
+        lastActionText = "เส้นตรง 3D เสร็จแล้ว"
+        feedback.notificationOccurred(.success)
+        renderOverlay()
     }
 
     func lockPlane() {
@@ -355,6 +461,7 @@ final class ARSessionController: NSObject, ObservableObject {
     }
 
     func resetMeasurement() {
+        clearLengthMeasurement()
         plane = nil
         segments.removeAll(keepingCapacity: true)
         firstPoint = nil
@@ -399,6 +506,10 @@ final class ARSessionController: NSObject, ObservableObject {
                 meanObservationUncertainty: fit.meanObservationUncertainty,
                 observationCount: fit.observationCount
             )
+            if !isClosing,
+               ProfileValidator.hasSelfIntersection(segments + [segment], close: false) {
+                throw ShadowAreaError.selfIntersection
+            }
             segments.append(segment)
             let endWorldPoint = isClosing
                 ? (firstWorldPoint ?? cursor.rawWorldPoint)
@@ -416,9 +527,7 @@ final class ARSessionController: NSObject, ObservableObject {
             strokeWorldPoints = [endWorldPoint]
             endpointFilter.reset()
             endpointFilter.append(cursor)
-            lastActionText = fit.usedFallback
-                ? "โค้งไม่เสถียร ใช้เส้นตรง"
-                : (fit.geometry.kind == .arc ? "เพิ่มเส้นโค้ง" : "เพิ่มเส้นตรง")
+            lastActionText = fit.geometry.kind == .arc ? "เพิ่มเส้นโค้ง" : "เพิ่มเส้นตรง"
             if !isClosing {
                 statusText = canClose ? "เข้าใกล้จุดเริ่มแล้ว กดปิดพื้นที่" : "เก็บขอบด้านถัดไป"
                 impact.impactOccurred()
@@ -428,7 +537,18 @@ final class ARSessionController: NSObject, ObservableObject {
             renderOverlay()
             return true
         } catch {
-            lastActionText = "วางจุดไม่สำเร็จ ลองขยับให้ห่างขึ้น"
+            switch error {
+            case ProfileFitError.discontinuousTrace:
+                lastActionText = "ขอบขาดช่วง กรุณาย้อนเป้าแล้วลากตามขอบช้าลง"
+            case ProfileFitError.insufficientObservations:
+                lastActionText = "โค้งยังมีจุดน้อย ลากเป้าตามขอบอีกนิด"
+            case ProfileFitError.unstableTrace:
+                lastActionText = "เส้นโค้งยังสั่นมาก กรุณาลากซ้ำช้าลงหรือแบ่งเป็นช่วงสั้น ๆ"
+            case ShadowAreaError.selfIntersection:
+                lastActionText = "เส้นตัดหรือทับกัน กรุณาย้อนเป้าแล้วแก้ขอบ"
+            default:
+                lastActionText = "วางจุดไม่สำเร็จ ลองขยับให้ห่างขึ้น"
+            }
             feedback.notificationOccurred(.warning)
             previewGeometry = nil
             resetPreviewClassification()
@@ -446,7 +566,10 @@ final class ARSessionController: NSObject, ObservableObject {
 
         var distance: Double?
         var frontalScore: Double?
-        if let plane {
+        if phase == .measuringLength, let worldPoint = sample.worldPoint {
+            distance = Double(simd_distance(cameraPosition, worldPoint))
+            frontalScore = 1
+        } else if let plane {
             distance = Double(abs(simd_dot(cameraPosition - plane.origin, plane.normal)))
             let forward = normalized(-SIMD3<Float>(
                 sample.cameraTransform.columns.2.x,
@@ -487,7 +610,7 @@ final class ARSessionController: NSObject, ObservableObject {
             currentCursor = nil
         }
 
-        let nearStart = isNearStart
+        let nearStart = phase == .tracing && isNearStart
         if nearStart && !wasNearStart {
             impact.impactOccurred(intensity: 0.8)
         }
@@ -540,7 +663,8 @@ final class ARSessionController: NSObject, ObservableObject {
             observations: observations,
             mode: traceMode
         ) else {
-            previewGeometry = .line(start: currentStart, end: point)
+            previewGeometry = traceMode == .arc
+                ? nil : .line(start: currentStart, end: point)
             return
         }
 
@@ -558,6 +682,13 @@ final class ARSessionController: NSObject, ObservableObject {
 
     private func guidanceText() -> String {
         if case .result = phase { return "พื้นที่เงาพร้อมตรวจสอบ" }
+        if case .completed = phase { return "วัดพื้นที่และความยาวครบแล้ว" }
+        if case .measuringLength = phase {
+            if !quality.isAcceptable { return quality.headline }
+            return lengthAnchors.isEmpty
+                ? "เล็งจุดต้นของเส้นตรง แล้วกดบันทึก"
+                : "เล็งจุดปลายของเส้นตรง แล้วกดวัดความยาว"
+        }
         if isNearStart && !quality.isAcceptable {
             return "ถึงจุดเริ่มแล้ว ถือกล้องนิ่งเพื่อปิดพื้นที่"
         }
@@ -568,7 +699,11 @@ final class ARSessionController: NSObject, ObservableObject {
         case .tracing where canClose: return "กลับถึงจุดเริ่มแล้ว กดปิดและคำนวณพื้นที่"
         case .tracing:
             switch traceMode {
-            case .arc: return "ลากเป้าตามส่วนโค้ง แล้วกดเพิ่มจุดปลาย"
+            case .arc where strokeObservations.count < 4:
+                return "เลื่อนเป้าตามขอบโค้งช้า ๆ แล้วค่อยยืนยันจุดปลาย"
+            case .arc where curveTraceIsUnstable:
+                return "เส้นโค้งยังไม่เสถียร ลากช้าลงหรือแบ่งเป็นช่วงสั้น ๆ"
+            case .arc: return "ตรวจเส้นโค้งอิสระบนภาพ แล้วกดเพิ่มจุดปลาย"
             case .line: return "เล็งจุดปลายเส้นตรง แล้วกดเพิ่มจุด"
             case .automatic where previewGeometry?.kind == .arc:
                 return "ตรวจพบเส้นโค้ง — ลากตามขอบแล้วกดเพิ่มจุด"
@@ -579,6 +714,34 @@ final class ARSessionController: NSObject, ObservableObject {
     }
 
     private func renderOverlay() {
+        if phase == .measuringLength || phase == .completed {
+            let worldPoints = lengthAnchors.map(anchorWorldPosition(for:))
+            let path = worldPoints.count == 2 ? [worldPoints] : []
+            let preview: [SIMD3<Float>]
+            if phase == .measuringLength,
+               let start = worldPoints.first,
+               let cursor = currentCursor {
+                preview = [start, cursor.rawWorldPoint]
+            } else {
+                preview = []
+            }
+            overlayRenderer?.render(
+                committedWorldPaths: path,
+                previewWorldPath: preview,
+                committedMeasurementTexts: lengthMeasurement.map {
+                    [MeasurementReport.length($0.lengthMeters)]
+                } ?? [],
+                previewMeasurementText: preview.count == 2
+                    ? MeasurementReport.length(Double(simd_distance(preview[0], preview[1])))
+                    : nil,
+                anchorWorldPoints: worldPoints,
+                closureReady: false,
+                isClosed: false,
+                reticleReady: quality.isAcceptable,
+                reticleVisible: phase == .measuringLength
+            )
+            return
+        }
         overlayRenderer?.render(
             committedWorldPaths: resolvedCommittedWorldPaths,
             previewWorldPath: previewWorldPath,
@@ -620,7 +783,9 @@ final class ARSessionController: NSObject, ObservableObject {
         return fittedWorldPath(
             for: previewGeometry,
             startWorldPoint: start,
-            endWorldPoint: cursor.rawWorldPoint
+            endWorldPoint: cursor.rawWorldPoint,
+            sourceObservations: strokeObservations + [observation(from: cursor, forcing: previewGeometry.end)],
+            sourceWorldPoints: strokeWorldPoints + [cursor.rawWorldPoint]
         )
     }
 
@@ -639,6 +804,24 @@ final class ARSessionController: NSObject, ObservableObject {
         )
         session.add(anchor: anchor)
         startTrackedRaycast(for: anchor.identifier)
+    }
+
+    private func addLengthAnchor(at worldPoint: SIMD3<Float>) {
+        var transform = matrix_identity_float4x4
+        transform.columns.3 = SIMD4(worldPoint.x, worldPoint.y, worldPoint.z, 1)
+        let anchor = ARAnchor(name: "SurfaceMeasureLengthPoint", transform: transform)
+        lengthAnchors.append(anchor)
+        anchorWorldPositions[anchor.identifier] = worldPoint
+        session.add(anchor: anchor)
+    }
+
+    private func clearLengthMeasurement() {
+        lengthMeasurement = nil
+        for anchor in lengthAnchors {
+            anchorWorldPositions.removeValue(forKey: anchor.identifier)
+            session.remove(anchor: anchor)
+        }
+        lengthAnchors.removeAll(keepingCapacity: true)
     }
 
     private func removeLastPointAnchorIfNeeded() {
@@ -759,14 +942,22 @@ final class ARSessionController: NSObject, ObservableObject {
         return fittedWorldPath(
             for: geometry,
             startWorldPoint: start,
-            endWorldPoint: endWorldPoint
+            endWorldPoint: endWorldPoint,
+            sourceObservations: strokeObservations + [PlanarObservation(
+                point: geometry.end,
+                uncertainty: quality.uncertaintyMeters,
+                timestamp: currentCursor?.timestamp ?? 0
+            )],
+            sourceWorldPoints: strokeWorldPoints + [endWorldPoint]
         )
     }
 
     private func fittedWorldPath(
         for geometry: SegmentGeometry,
         startWorldPoint: SIMD3<Float>,
-        endWorldPoint: SIMD3<Float>
+        endWorldPoint: SIMD3<Float>,
+        sourceObservations: [PlanarObservation],
+        sourceWorldPoints: [SIMD3<Float>]
     ) -> [SIMD3<Float>] {
         guard geometry.kind == .arc, let plane else {
             return [startWorldPoint, endWorldPoint]
@@ -774,6 +965,36 @@ final class ARSessionController: NSObject, ObservableObject {
 
         let planarPoints = geometry.tessellated(maximumChordError: 0.00075)
         guard planarPoints.count >= 2 else { return [startWorldPoint, endWorldPoint] }
+        if case .freeform = geometry,
+           sourceObservations.count == sourceWorldPoints.count,
+           sourceObservations.count >= 2 {
+            var lastMatchedIndex = 0
+            var path = planarPoints.enumerated().map { vertexIndex, point in
+                if vertexIndex == planarPoints.count - 1 {
+                    lastMatchedIndex = sourceObservations.count - 1
+                } else if vertexIndex > 0 {
+                    let candidates = lastMatchedIndex..<(sourceObservations.count - 1)
+                    lastMatchedIndex = candidates.min { left, right in
+                        sourceObservations[left].point.distance(to: point)
+                            < sourceObservations[right].point.distance(to: point)
+                    } ?? lastMatchedIndex
+                }
+                let lower = max(0, lastMatchedIndex - 1)
+                let upper = min(sourceObservations.count - 1, lastMatchedIndex + 1)
+                let depths = (lower...upper).map { index in
+                    simd_dot(
+                        sourceWorldPoints[index]
+                            - plane.worldPoint(for: sourceObservations[index].point),
+                        plane.normal
+                    )
+                }.sorted()
+                let depth = depths[depths.count / 2]
+                return plane.worldPoint(for: point) + plane.normal * depth
+            }
+            path[0] = startWorldPoint
+            path[path.count - 1] = endWorldPoint
+            return path
+        }
         let planarStart = plane.worldPoint(for: geometry.start)
         let planarEnd = plane.worldPoint(for: geometry.end)
         let startDepth = simd_dot(startWorldPoint - planarStart, plane.normal)

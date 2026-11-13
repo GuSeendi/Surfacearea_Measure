@@ -58,6 +58,8 @@ enum TraceMode: String, CaseIterable, Identifiable, Sendable {
 enum SegmentGeometry: Codable, Hashable, Sendable {
     case line(start: PlanarPoint, end: PlanarPoint)
     case arc(center: PlanarPoint, radius: Double, startAngle: Double, sweep: Double)
+    /// An arbitrary curved boundary in the locked projection plane.
+    case freeform(points: [PlanarPoint])
 
     var start: PlanarPoint {
         switch self {
@@ -67,6 +69,7 @@ enum SegmentGeometry: Codable, Hashable, Sendable {
                 x: center.x + radius * cos(startAngle),
                 y: center.y + radius * sin(startAngle)
             )
+        case let .freeform(points): points.first ?? .zero
         }
     }
 
@@ -80,6 +83,7 @@ enum SegmentGeometry: Codable, Hashable, Sendable {
                 x: center.x + radius * cos(angle),
                 y: center.y + radius * sin(angle)
             )
+        case let .freeform(points): return points.last ?? .zero
         }
     }
 
@@ -87,6 +91,8 @@ enum SegmentGeometry: Codable, Hashable, Sendable {
         switch self {
         case let .line(start, end): start.distance(to: end)
         case let .arc(_, radius, _, sweep): radius * abs(sweep)
+        case let .freeform(points):
+            zip(points, points.dropFirst()).reduce(0) { $0 + $1.0.distance(to: $1.1) }
         }
     }
 
@@ -94,6 +100,7 @@ enum SegmentGeometry: Codable, Hashable, Sendable {
         switch self {
         case .line: .line
         case .arc: .arc
+        case .freeform: .arc
         }
     }
 
@@ -111,6 +118,10 @@ enum SegmentGeometry: Codable, Hashable, Sendable {
                     - center.y * deltaX
                     + radius * radius * sweep
             )
+        case let .freeform(points):
+            return 0.5 * zip(points, points.dropFirst()).reduce(0) {
+                $0 + $1.0.cross($1.1)
+            }
         }
     }
 
@@ -131,6 +142,8 @@ enum SegmentGeometry: Codable, Hashable, Sendable {
                     y: center.y + radius * sin(angle)
                 )
             }
+        case let .freeform(points):
+            return points
         }
     }
 }

@@ -12,6 +12,8 @@ Use dimensionally stable targets whose orthographic area is independently known:
 4. Mixed profile containing straight sides and known-radius circular arcs.
 5. Concave non-self-intersecting polygon.
 6. The same silhouettes placed at several depths while retaining the same orthographic projection.
+7. A dimensionally verified irregular curved silhouette that cannot be represented by one circle; independently measure its projected area and curved-edge length.
+8. Calibrated straight reference lengths at multiple depths, including endpoints at different distances from the camera, to verify the second-step 3D distance is not the 2D projected distance.
 
 Record reference instrument, calibration date, dimensions, temperature and reference uncertainty.
 
@@ -41,7 +43,8 @@ Reflective, transparent, wet or moving boundaries must be rejected unless separa
 - Reported area and estimated uncertainty.
 - Absolute and relative error.
 - Perimeter and every segment length.
-- Trace direction and selected line/arc mode.
+- Second-step straight 3D length and reference-length error, when measured.
+- Trace direction and selected line/curve mode.
 - Mean and maximum fit residual.
 - Depth-confidence distribution.
 - Camera distance, speed and frontal-angle distribution.
@@ -69,6 +72,7 @@ These are initial release gates, not current performance claims.
 - Force a large closure gap.
 - Draw a bow-tie crossing and a backtracking overlapping edge.
 - Trace a straight edge in arc mode and a curved edge in line mode.
+- Trace the irregular curve at slow and moderate speeds, with deliberate hand tremor and a brief missed section; record length bias and whether the missed section is rejected.
 - Use an object with changing physical depth but an unchanged 2D projection.
 - Heat the device to serious thermal state and verify capture pauses.
 

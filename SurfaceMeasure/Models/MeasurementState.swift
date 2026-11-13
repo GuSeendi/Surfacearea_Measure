@@ -6,7 +6,19 @@ enum MeasurementPhase: Equatable {
     case findingPlane
     case tracing
     case result
+    case measuringLength
+    case completed
     case unavailable(String)
+}
+
+/// The second step measures the direct spatial chord, not its 2D projection.
+struct StraightLengthMeasurement: Sendable {
+    let startWorldPoint: SIMD3<Float>
+    let endWorldPoint: SIMD3<Float>
+
+    var lengthMeters: Double {
+        Double(simd_distance(startWorldPoint, endWorldPoint))
+    }
 }
 
 enum CameraAuthorizationState: Equatable {

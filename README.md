@@ -1,16 +1,18 @@
 # SurfaceMeasure — พื้นที่เงา 2D
 
-แอป iPhone + LiDAR สำหรับวัดพื้นที่ฉายสองมิติของขอบชิ้นงานบนระนาบอ้างอิงที่ผู้ใช้ล็อกไว้ แอปไม่ได้คำนวณพื้นที่ผิวสามมิติ
+แอป iPhone + LiDAR สำหรับวัดพื้นที่ฉายสองมิติของขอบชิ้นงาน แล้ววัดความยาวเส้นตรงจริงใน 3D เป็นขั้นตอนที่สอง แอปไม่ได้คำนวณพื้นที่ผิวสามมิติ
 
 ## นิยามการวัด
 
-1. LiDAR หาตำแหน่งขอบชิ้นงานเป็นจุด 3D
+1. ผู้ใช้เล็งเป้ากลางภาพตามขอบชิ้นงาน และ LiDAR ให้ตำแหน่ง 3D ของแต่ละจุด
 2. ทุกจุดถูกฉายตั้งฉากลงระนาบ 2D เดียวกัน แม้ความลึกจริงของจุดจะแตกต่างกัน
-3. ตัวอย่างระหว่างจุดถูก fit เป็นเส้นตรงหรือ circular arc
+3. ตัวอย่างระหว่างจุดถูก fit เป็นเส้นตรง, circular arc เมื่อข้อมูลรองรับ หรือเส้นโค้งอิสระที่ลดจุดสั่น
 4. ขอบต้องปิดและต้องไม่ตัดหรือทับกัน
-5. พื้นที่คำนวณจาก Green's theorem โดยใช้สูตร exact สำหรับ line และ arc
+5. พื้นที่คำนวณจาก Green's theorem โดยใช้สูตร exact สำหรับเส้นตรงและ circular arc; เส้นโค้งอิสระคำนวณจาก polyline ที่ผ่านการลดสัญญาณรบกวน
 
 ผลลัพธ์จึงเทียบเท่าพื้นที่ของเงาที่เกิดจากแสงตั้งฉากกับระนาบอ้างอิง
+
+ความยาวในขั้นตอนที่สองใช้ระยะตรงระหว่างตำแหน่ง LiDAR 3D ของจุดต้นและจุดปลาย ไม่ฉายลงระนาบพื้นที่เงา และไม่ใช่ความยาวตามขอบโค้ง
 
 ## Workflow
 
@@ -18,17 +20,19 @@
 2. กด `ล็อกระนาบเงา`
 3. วางจุดเริ่ม แล้วเคลื่อนเป้าตามขอบชิ้นงาน
 4. กด `เพิ่มจุด` ที่ปลายด้าน มุม หรือช่วงโค้งสำคัญ
-5. ใช้โหมด `อัตโนมัติ`, `เส้นตรง` หรือ `เส้นโค้ง` เพื่อควบคุมการ fit
+5. ใช้โหมด `อัตโนมัติ`, `เส้นตรง` หรือ `เส้นโค้ง` เพื่อควบคุมการ fit; โหมดโค้งรองรับขอบอิสระ ไม่ต้องเป็นวงกลม
 6. กลับใกล้จุดเริ่มจนเส้นเป็นสีเขียว แล้วกด `ปิดพื้นที่`
 7. ตรวจพื้นที่ เส้นรอบรูป ความยาวแต่ละด้าน และ uncertainty โดยประมาณ
+8. กด `ขั้นที่ 2 วัดความยาว` แล้วเล็งและยืนยันจุดต้นกับจุดปลายเพียงสองจุด
+9. ตรวจผลพื้นที่ 2D และความยาวเส้นตรง 3D ร่วมกัน หรือวัดเส้นใหม่โดยไม่ต้องวัดพื้นที่ซ้ำ
 
 ## Architecture
 
-- `ARSessionController`: session lifecycle, plane lock, camera-motion tracking, 3D-to-2D projection and measurement state
+- `ARSessionController`: session lifecycle, plane lock, camera-motion tracking, 3D-to-2D area projection and separate 3D length step
 - `DepthSampler`: robust 5×5 center depth sample with confidence filtering and camera-intrinsic unprojection
 - `TemporalPointFilter`: multi-frame endpoint stabilization with robust spike and motion rejection
 - `CaptureQualityEvaluator`: tracking, depth, standoff, speed, angle and thermal gates
-- `ProfileFitter`: bounded-sample line/arc fitting with explicit override
+- `ProfileFitter`: bounded-sample line/arc/freeform fitting with robust smoothing and gap rejection
 - `ProfileValidator`: closure, crossing and overlap checks
 - `ShadowAreaCalculator`: exact Green-integral area and perimeter
 - `BoundaryOverlayRenderer`: low-overhead `CAShapeLayer` overlay projected through RealityKit
@@ -36,10 +40,10 @@
 ## Performance decisions
 
 - Depth/pose UI processing is capped at 30 Hz.
-- Arc preview fitting is capped at 15 Hz.
+- Curve preview fitting is capped at 15 Hz.
 - Each active side retains at most 512 spatially reduced observations.
 - Geometry rendering updates existing layers instead of recreating RealityKit entities.
-- Measurement and display use the same compact 2D entities; no 3D mesh reconstruction or cloud processing is required.
+- Area uses compact 2D entities; the second-step length uses only two 3D endpoints. No 3D mesh reconstruction or cloud processing is required.
 
 ## Build and checks
 
@@ -58,6 +62,7 @@ xcrun swiftc \
   SurfaceMeasure/Services/ProfileFitter.swift \
   SurfaceMeasure/Services/ProfileValidator.swift \
   SurfaceMeasure/Services/ShadowAreaCalculator.swift \
+  SurfaceMeasure/Services/MeasurementReport.swift \
   Tests/ShadowAreaEngineCheck.swift \
   -o /tmp/shadow-area-check
 /tmp/shadow-area-check

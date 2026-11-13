@@ -15,15 +15,15 @@ enum ProfileValidator {
         return maximum
     }
 
-    static func hasSelfIntersection(_ segments: [ProfileSegment]) -> Bool {
-        let polyline = tessellatedPolyline(segments, close: true, maximumChordError: 0.0002)
+    static func hasSelfIntersection(_ segments: [ProfileSegment], close: Bool = true) -> Bool {
+        let polyline = tessellatedPolyline(segments, close: close, maximumChordError: 0.0002)
         guard polyline.count >= 4 else { return false }
         let edgeCount = polyline.count - 1
 
         for first in 0..<edgeCount {
             for second in (first + 1)..<edgeCount {
                 let adjacent = abs(first - second) <= 1
-                    || (first == 0 && second == edgeCount - 1)
+                    || (close && first == 0 && second == edgeCount - 1)
                 if adjacent {
                     if collinearOverlap(
                         polyline[first], polyline[first + 1],

@@ -20,7 +20,12 @@ struct ScanView: View {
     private var topPanel: some View {
         VStack(spacing: 10) {
             HStack(spacing: 10) {
-                Label("พื้นที่เงา 2D", systemImage: "square.dashed")
+                Label(
+                    controller.phase == .measuringLength || controller.phase == .completed
+                        ? "ความยาวเส้นตรง 3D" : "พื้นที่เงา 2D",
+                    systemImage: controller.phase == .measuringLength || controller.phase == .completed
+                        ? "ruler" : "square.dashed"
+                )
                     .font(.headline)
                 Spacer()
                 if let distance = controller.quality.distanceMeters {
@@ -38,6 +43,12 @@ struct ScanView: View {
                     }
                 }
                 .pickerStyle(.segmented)
+                if controller.traceMode == .arc {
+                    Text("โค้งอิสระ: เลื่อนเป้าตามขอบจริงช้า ๆ ระบบลดจุดสั่นและคงจุดต้น–ปลาย")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
             }
 
             HStack(alignment: .firstTextBaseline, spacing: 8) {
@@ -46,7 +57,7 @@ struct ScanView: View {
                 Text(controller.statusText)
                     .font(.subheadline.weight(.semibold))
                     .frame(maxWidth: .infinity, alignment: .leading)
-                if !controller.segments.isEmpty {
+                if controller.phase == .tracing, !controller.segments.isEmpty {
                     Text("\(controller.segments.count) ด้าน")
                         .font(.caption.monospacedDigit())
                         .foregroundStyle(.secondary)
@@ -87,11 +98,16 @@ struct ScanView: View {
             .panelStyle()
         case .tracing:
             traceControls
-        case .result:
+        case .measuringLength:
+            lengthControls
+        case .result, .completed:
             if let result = controller.result {
                 ResultView(
                     result: result,
                     segments: controller.segments,
+                    lengthMeasurement: controller.lengthMeasurement,
+                    onMeasureLength: controller.startLengthMeasurement,
+                    onRetryLength: controller.retryLengthMeasurement,
                     onNewMeasurement: controller.resetMeasurement
                 )
             }
@@ -100,13 +116,67 @@ struct ScanView: View {
         }
     }
 
+    private var lengthControls: some View {
+        VStack(spacing: 12) {
+            Text("ขั้นที่ 2 จาก 2 · เล็งจุดต้นและปลายเท่านั้น วัดระยะตรง 3D แม้จุดลึกไม่เท่ากัน")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+
+            if let result = controller.result {
+                HStack {
+                    Text("พื้นที่เงาที่วัดแล้ว")
+                    Spacer()
+                    Text(MeasurementReport.area(result.areaSquareMeters))
+                        .monospacedDigit()
+                }
+                .font(.caption)
+            }
+
+            HStack(spacing: 10) {
+                Button(action: controller.cancelLengthMeasurement) {
+                    Image(systemName: "chevron.backward")
+                        .frame(width: 44, height: 48)
+                }
+                .buttonStyle(.bordered)
+                .accessibilityLabel("กลับไปดูผลพื้นที่")
+
+                Button(action: controller.placeLengthPoint) {
+                    Label(
+                        controller.hasLengthStartPoint
+                            ? "วางจุดปลายและวัด" : "วางจุดต้น",
+                        systemImage: controller.hasLengthStartPoint ? "checkmark" : "plus"
+                    )
+                    .font(.headline)
+                    .frame(maxWidth: .infinity, minHeight: 48)
+                }
+                .buttonStyle(PrimaryMeasureButtonStyle(color: .cyan))
+                .disabled(!controller.canPlaceLengthPoint)
+
+                if controller.hasLengthStartPoint {
+                    Button(action: controller.retryLengthMeasurement) {
+                        Image(systemName: "arrow.counterclockwise")
+                            .frame(width: 44, height: 48)
+                    }
+                    .buttonStyle(.bordered)
+                    .accessibilityLabel("เริ่มวัดเส้นใหม่")
+                }
+            }
+        }
+        .panelStyle()
+    }
+
     private var traceControls: some View {
         VStack(spacing: 12) {
             if controller.isNearStart {
                 Label(
                     controller.canClose
                         ? "พร้อมปิดพื้นที่ — แตะปุ่มสีเขียว"
-                        : "ถึงจุดเริ่มแล้ว — ถือกล้องนิ่งสักครู่",
+                        : (controller.needsMoreCurveSamples
+                            ? "โค้งยังมีจุดน้อย — เลื่อนเป้าตามขอบเพิ่ม"
+                            : controller.curveTraceIsUnstable
+                                ? "เส้นโค้งยังไม่นิ่ง — ลากช้าลงหรือแบ่งช่วง"
+                            : "ถึงจุดเริ่มแล้ว — ถือกล้องนิ่งสักครู่"),
                     systemImage: controller.canClose ? "checkmark.circle.fill" : "scope"
                 )
                 .font(.caption.weight(.semibold))
@@ -144,9 +214,13 @@ struct ScanView: View {
                     Label(
                         controller.canClose
                             ? "ปิดและคำนวณพื้นที่"
-                            : (controller.isNearStart
-                                ? "ถือให้นิ่งเพื่อปิด"
-                                : (controller.hasStartPoint ? "เพิ่มจุด" : "วางจุดเริ่ม")),
+                            : (controller.needsMoreCurveSamples
+                                ? "ลากตามขอบเพิ่ม"
+                                : controller.curveTraceIsUnstable
+                                    ? "รอเส้นโค้งนิ่ง"
+                                : (controller.isNearStart
+                                    ? "ถือให้นิ่งเพื่อปิด"
+                                    : (controller.hasStartPoint ? "เพิ่มจุด" : "วางจุดเริ่ม"))),
                         systemImage: controller.isNearStart ? "checkmark" : "plus"
                     )
                     .font(.headline)

@@ -3,7 +3,9 @@ import Foundation
 enum ProfileFitError: Error, Equatable {
     case insufficientObservations
     case coincidentEndpoints
-    case invalidArc
+    case invalidCurve
+    case discontinuousTrace
+    case unstableTrace
 }
 
 struct SegmentFit: Sendable {
@@ -11,7 +13,6 @@ struct SegmentFit: Sendable {
     var rmsError: Double
     var meanObservationUncertainty: Double
     var observationCount: Int
-    var usedFallback: Bool
 }
 
 enum ProfileFitter {
@@ -35,25 +36,32 @@ enum ProfileFitter {
             geometry: .line(start: start, end: end),
             rmsError: lineRMS,
             meanObservationUncertainty: meanUncertainty,
-            observationCount: reduced.count,
-            usedFallback: mode == .arc
+            observationCount: reduced.count
         )
 
-        guard mode != .line,
-              let arc = arcFit(points: points, uncertainty: meanUncertainty)
-        else { return line }
+        if mode == .line { return line }
+        if mode == .arc {
+            return try freeformFit(
+                points: points,
+                uncertainty: meanUncertainty,
+                observationCount: reduced.count
+            )
+        }
 
         let chord = start.distance(to: end)
         let sagitta = robustSagitta(points: points, start: start, end: end)
-        let minimumSagitta = max(0.0015, meanUncertainty * 1.25)
+        let minimumSagitta = max(0.008, meanUncertainty * 2.5)
+        guard reduced.count >= 6, sagitta >= minimumSagitta else { return line }
+
+        guard let arc = arcFit(points: points, uncertainty: meanUncertainty) else {
+            return try freeformFit(
+                points: points,
+                uncertainty: meanUncertainty,
+                observationCount: reduced.count
+            )
+        }
         let sweep = abs(arc.sweep)
-        let manualArcIsUsable = sweep >= .pi / 90
-            && sweep <= .pi * 1.95
-            && arc.inlierRatio >= 0.60
-            && arc.directionConsistency >= 0.55
-        let automaticArcIsUsable = reduced.count >= 6
-            && sagitta >= minimumSagitta
-            && sweep >= .pi / 45
+        let automaticArcIsUsable = sweep >= .pi / 45
             && sweep <= .pi * 1.95
             && arc.rms < lineRMS * 0.82
             && arc.rms <= max(0.0025, meanUncertainty * 1.75)
@@ -61,8 +69,13 @@ enum ProfileFitter {
             && arc.directionConsistency >= 0.72
             && arc.radius >= chord * 0.5
 
-        let shouldUseArc = mode == .arc ? manualArcIsUsable : automaticArcIsUsable
-        guard shouldUseArc else { return line }
+        guard automaticArcIsUsable else {
+            return try freeformFit(
+                points: points,
+                uncertainty: meanUncertainty,
+                observationCount: reduced.count
+            )
+        }
 
         return SegmentFit(
             geometry: .arc(
@@ -73,9 +86,102 @@ enum ProfileFitter {
             ),
             rmsError: arc.rms,
             meanObservationUncertainty: meanUncertainty,
-            observationCount: reduced.count,
-            usedFallback: false
+            observationCount: reduced.count
         )
+    }
+
+    /// Retain the actual silhouette instead of forcing every curve onto one circle.
+    /// A short spatial median removes isolated depth spikes; Douglas–Peucker then
+    /// removes hand tremor below the sensor's lateral uncertainty. Endpoints stay exact.
+    private static func freeformFit(
+        points: [PlanarPoint],
+        uncertainty: Double,
+        observationCount: Int
+    ) throws -> SegmentFit {
+        guard points.count >= 5 else { throw ProfileFitError.insufficientObservations }
+        var filtered = points
+        for index in 1..<(points.count - 1) {
+            let lower = max(0, index - 2)
+            let upper = min(points.count - 1, index + 2)
+            let neighborhood = Array(points[lower...upper])
+            filtered[index] = PlanarPoint(
+                x: median(neighborhood.map(\.x).sorted()),
+                y: median(neighborhood.map(\.y).sorted())
+            )
+        }
+        filtered[0] = points[0]
+        filtered[filtered.count - 1] = points[points.count - 1]
+
+        let maximumGap = max(0.05, uncertainty * 6)
+        guard zip(filtered, filtered.dropFirst()).allSatisfy({
+            $0.0.distance(to: $0.1) <= maximumGap
+        }) else { throw ProfileFitError.discontinuousTrace }
+
+        let tolerance = min(0.008, max(0.002, uncertainty * 1.25))
+        let kept = simplify(filtered, tolerance: tolerance)
+        guard kept.count >= 2 else { throw ProfileFitError.invalidCurve }
+        let fitted = kept.map { filtered[$0] }
+        let coarse = simplify(filtered, tolerance: tolerance * 2).map { filtered[$0] }
+        let fineLength = pathLength(fitted)
+        let coarseLength = pathLength(coarse)
+        guard fineLength - coarseLength <= max(0.012, fineLength * 0.02) else {
+            throw ProfileFitError.unstableTrace
+        }
+        let residuals = points.map { point in distance(point, to: fitted) }
+        return SegmentFit(
+            geometry: .freeform(points: fitted),
+            rmsError: robustRMS(residuals),
+            meanObservationUncertainty: uncertainty,
+            observationCount: observationCount
+        )
+    }
+
+    private static func simplify(_ points: [PlanarPoint], tolerance: Double) -> [Int] {
+        guard points.count > 2 else { return Array(points.indices) }
+        var selected = [0, points.count - 1]
+        var pending = [(0, points.count - 1)]
+        while let (start, end) = pending.popLast() {
+            guard end > start + 1 else { continue }
+            var maximum = 0.0
+            var farthest = start
+            for index in (start + 1)..<end {
+                let error = distance(points[index], to: points[start], points[end])
+                if error > maximum {
+                    maximum = error
+                    farthest = index
+                }
+            }
+            if maximum > tolerance {
+                selected.append(farthest)
+                pending.append((start, farthest))
+                pending.append((farthest, end))
+            }
+        }
+        return selected.sorted()
+    }
+
+    private static func distance(_ point: PlanarPoint, to path: [PlanarPoint]) -> Double {
+        zip(path, path.dropFirst()).map {
+            distance(point, to: $0.0, $0.1)
+        }.min() ?? .infinity
+    }
+
+    private static func pathLength(_ points: [PlanarPoint]) -> Double {
+        zip(points, points.dropFirst()).reduce(0) {
+            $0 + $1.0.distance(to: $1.1)
+        }
+    }
+
+    private static func distance(
+        _ point: PlanarPoint,
+        to start: PlanarPoint,
+        _ end: PlanarPoint
+    ) -> Double {
+        let edge = end - start
+        let squaredLength = edge.dot(edge)
+        guard squaredLength > 1e-12 else { return point.distance(to: start) }
+        let fraction = min(1, max(0, (point - start).dot(edge) / squaredLength))
+        return point.distance(to: start + edge * fraction)
     }
 
     private static func spatiallyReduced(_ observations: [PlanarObservation]) -> [PlanarObservation] {
